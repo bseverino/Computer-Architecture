@@ -23,22 +23,24 @@ class CPU:
         else:
             print(f'{address} is an invalid address')
 
-    def load(self):
+    def load(self, filepath):
         """Load a program into memory."""
+        print(filepath)
 
         address = 0
 
         # For now, we've just hardcoded a program:
 
-        program = [
-            # From print8.ls8
-            0b10000010, # LDI R0,8
-            0b00000000,
-            0b00001000,
-            0b01000111, # PRN R0
-            0b00000000,
-            0b00000001, # HLT
-        ]
+        program = []
+
+        with open(f'examples/{filepath}', "r") as a_file:
+            # line = a_file.readline()
+            for line in a_file:
+                if line.startswith('#') or not line.strip():
+                    pass
+                else:
+                    step = line.split('#')[0].strip()
+                    program.append(int(step, 2))
 
         for instruction in program:
             self.ram[address] = instruction
@@ -101,3 +103,4 @@ class CPU:
             
             else:
                 print(f'Unknown instruction {ir} at address {self.pc}')
+                break
