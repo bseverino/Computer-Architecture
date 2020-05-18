@@ -39,8 +39,9 @@ class CPU:
                 if line.startswith('#') or not line.strip():
                     pass
                 else:
-                    step = line.split('#')[0].strip()
-                    program.append(int(step, 2))
+                    if '#' in line:
+                        line = line.split('#')[0].strip()
+                    program.append(int(line, 2))
 
         for instruction in program:
             self.ram[address] = instruction
@@ -83,9 +84,11 @@ class CPU:
         HLT = 0b00000001
         LDI = 0b10000010
         PRN = 0b01000111
+        MUL = 0b10100010
 
         while not halted:
-            ir = self.ram[self.pc]     
+            ir = self.ram[self.pc]
+            # self.trace()
 
             if ir == LDI:
                 reg_num = self.ram_read(self.pc + 1)
@@ -97,6 +100,12 @@ class CPU:
                 reg_num = self.ram_read(self.pc + 1)
                 print(self.reg[reg_num])
                 self.pc += 2
+
+            elif ir == MUL:
+                reg_num_a = self.ram_read(self.pc + 1)
+                reg_num_b = self.ram_read(self.pc + 2)
+                self.reg[reg_num_a] *= self.reg[reg_num_b]
+                self.pc += 3
 
             elif ir == HLT:
                 halted = True
