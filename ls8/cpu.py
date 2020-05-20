@@ -5,9 +5,12 @@ import sys
 HLT = 0b00000001
 LDI = 0b10000010
 PRN = 0b01000111
+ADD = 0b10100000
 MUL = 0b10100010
 PUSH = 0b01000101
 POP = 0b01000110
+CALL = 0b01010000
+RET = 0b00010001
 
 class CPU:
     """Main CPU class."""
@@ -23,9 +26,12 @@ class CPU:
         self.branchtable[HLT] = self.handle_hlt
         self.branchtable[LDI] = self.handle_ldi
         self.branchtable[PRN] = self.handle_prn
+        self.branchtable[ADD] = self.handle_add
         self.branchtable[MUL] = self.handle_mul
         self.branchtable[PUSH] = self.handle_push
         self.branchtable[POP] = self.handle_pop
+        self.branchtable[CALL] = self.handle_call
+        self.branchtable[RET] = self.handle_ret
     
     def ram_read(self, address):
         if 0 <= address <= 255:
@@ -107,11 +113,15 @@ class CPU:
         print(self.reg[arg_a])
         self.pc += 2
     
+    def handle_add(self, arg_a, arg_b):
+        self.alu("ADD", arg_a, arg_b)
+        self.pc += 3
+    
     def handle_mul(self, arg_a, arg_b):
         self.alu("MUL", arg_a, arg_b)
         self.pc += 3
 
-    def handle_push(self, arg_a, arg_b):        
+    def handle_push(self, arg_a, arg_b):   
         self.reg[7] -= 1
         self.ram_write(self.reg[7], self.reg[arg_a])
         self.pc += 2
@@ -119,11 +129,20 @@ class CPU:
     def handle_pop(self, arg_a, arg_b):
         if self.reg[7] >= 244:
             print('Cannot pop, stack empty')
-            self.handle_hlt()
+            self.halted = True
         else:
             self.reg[arg_a] = self.ram_read(self.reg[7])
             self.reg[7] += 1
             self.pc += 2
+    
+    def handle_call(self, arg_a, arg_b):
+        self.reg[7] -= 1
+        self.ram_write(self.reg[7], self.pc + 2)
+        self.pc = self.reg[arg_a]
+
+    def handle_ret(self, arg_a, arg_b):
+        self.pc = self.ram_read(self.reg[7])
+        self.reg[7] += 1
 
     def run(self):
         """Run the CPU."""
@@ -136,6 +155,7 @@ class CPU:
             arg_b = self.ram_read(self.pc + 2)
             try:
                 self.branchtable[ir](arg_a, arg_b)
+                self.trace()
             except:
-                print(f'Unknown instruction {ir} at address {self.pc}')
-                break
+                print(f'Error with instruction {ir} at address {self.pc}')
+                self.halted = True
