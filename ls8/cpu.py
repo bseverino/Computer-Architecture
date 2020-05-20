@@ -2,6 +2,13 @@
 
 import sys
 
+HLT = 0b00000001
+LDI = 0b10000010
+PRN = 0b01000111
+MUL = 0b10100010
+PUSH = 0b01000101
+POP = 0b01000110
+
 class CPU:
     """Main CPU class."""
 
@@ -10,6 +17,15 @@ class CPU:
         self.ram = [0] * 256
         self.reg = [0] * 8
         self.pc = 0
+        self.halted = True
+
+        self.branchtable = {}
+        self.branchtable[HLT] = self.handle_hlt
+        self.branchtable[LDI] = self.handle_ldi
+        self.branchtable[PRN] = self.handle_prn
+        self.branchtable[MUL] = self.handle_mul
+        self.branchtable[PUSH] = self.handle_push
+        self.branchtable[POP] = self.handle_pop
     
     def ram_read(self, address):
         if 0 <= address <= 255:
@@ -53,7 +69,10 @@ class CPU:
 
         if op == "ADD":
             self.reg[reg_a] += self.reg[reg_b]
-        #elif op == "SUB": etc
+
+        elif op == "MUL":
+            self.reg[reg_a] *= self.reg[reg_b]
+
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -76,40 +95,47 @@ class CPU:
             print(" %02X" % self.reg[i], end='')
 
         print()
+    
+    def handle_hlt(self, arg_a, arg_b):
+        self.halted = True
+    
+    def handle_ldi(self, arg_a, arg_b):
+        self.reg[arg_a] = arg_b
+        self.pc += 3
+
+    def handle_prn(self, arg_a, arg_b):
+        print(self.reg[arg_a])
+        self.pc += 2
+    
+    def handle_mul(self, arg_a, arg_b):
+        self.alu("MUL", arg_a, arg_b)
+        self.pc += 3
+
+    def handle_push(self, arg_a, arg_b):        
+        self.reg[7] -= 1
+        self.ram_write(self.reg[7], self.reg[arg_a])
+        self.pc += 2
+
+    def handle_pop(self, arg_a, arg_b):
+        if self.reg[7] >= 244:
+            print('Cannot pop, stack empty')
+            self.handle_hlt()
+        else:
+            self.reg[arg_a] = self.ram_read(self.reg[7])
+            self.reg[7] += 1
+            self.pc += 2
 
     def run(self):
         """Run the CPU."""
-        halted = False
+        self.halted = False
+        self.reg[7] = 244
 
-        HLT = 0b00000001
-        LDI = 0b10000010
-        PRN = 0b01000111
-        MUL = 0b10100010
-
-        while not halted:
+        while not self.halted:
             ir = self.ram[self.pc]
-            # self.trace()
-
-            if ir == LDI:
-                reg_num = self.ram_read(self.pc + 1)
-                value = self.ram_read(self.pc + 2)
-                self.reg[reg_num] = value
-                self.pc += 3
-            
-            elif ir == PRN:
-                reg_num = self.ram_read(self.pc + 1)
-                print(self.reg[reg_num])
-                self.pc += 2
-
-            elif ir == MUL:
-                reg_num_a = self.ram_read(self.pc + 1)
-                reg_num_b = self.ram_read(self.pc + 2)
-                self.reg[reg_num_a] *= self.reg[reg_num_b]
-                self.pc += 3
-
-            elif ir == HLT:
-                halted = True
-            
-            else:
+            arg_a = self.ram_read(self.pc + 1)
+            arg_b = self.ram_read(self.pc + 2)
+            try:
+                self.branchtable[ir](arg_a, arg_b)
+            except:
                 print(f'Unknown instruction {ir} at address {self.pc}')
                 break
