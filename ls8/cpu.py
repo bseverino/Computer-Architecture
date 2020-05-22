@@ -4,6 +4,7 @@ import sys
 from time import time
 
 ADD = 0b10100000
+ADDI = 0b10001111
 AND = 0b10101000
 CALL = 0b01010000
 CMP = 0b10100111
@@ -50,6 +51,7 @@ class CPU:
 
         self.branchtable = {}
         self.branchtable[ADD] = self.handle_add
+        self.branchtable[ADDI] = self.handle_addi
         self.branchtable[AND] = self.handle_and
         self.branchtable[CALL] = self.handle_call
         self.branchtable[CMP] = self.handle_cmp
@@ -185,6 +187,12 @@ class CPU:
         num_a = self.ram_read(self.pc + 1)
         num_b = self.ram_read(self.pc + 2)
         self.alu("ADD", num_a, num_b)
+        self.pc += 3
+    
+    def handle_addi(self):
+        reg_num = self.ram_read(self.pc + 1)
+        value = self.ram_read(self.pc + 2)
+        self.reg[reg_num] += value
         self.pc += 3
     
     def handle_and(self):
